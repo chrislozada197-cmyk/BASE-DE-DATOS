@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestión de Documentos</title>
+</head>
+<body>
+    <h1>Subir documento</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Subir</button>
+    </form>
+
+    <h1>Buscar documento</h1>
+    <form action="/buscar" method="get">
+        <input type="text" name="q" placeholder="Nombre o palabra clave" required>
+        <button type="submit">Buscar</button>
+    </form>
+</body>
+</html>

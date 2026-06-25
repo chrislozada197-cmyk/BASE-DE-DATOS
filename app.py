@@ -1,9 +1,12 @@
-from flask import Flask, request, render_template
-import sqlite3, os, datetime
+from flask import Flask, request, render_template, send_from_directory
+import sqlite3, os
 
 app = Flask(__name__)
+
+# Carpeta interna en Render (no OneDrive local)
 UPLOAD_FOLDER = "archivos"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # crea la carpeta si no existe
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.route("/")
 def inicio():
@@ -12,42 +15,57 @@ def inicio():
 @app.route("/upload", methods=["POST"])
 def upload_file():
     file = request.files["file"]
-    nombre = file.filename
-    tipo = file.filename.split(".")[-1]
-    ruta = os.path.join(UPLOAD_FOLDER, nombre)
-    file.save(ruta)
 
-    fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Normalizar nombre del archivo (quita espacios)
+    filename = os.path.basename(file.filename).replace(" ", "_")
 
+    # Ruta completa en carpeta interna
+    ruta = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
+    try:
+        file.save(ruta)
+    except Exception as e:
+        return f"Error al guardar el archivo: {str(e)}"
+
+    # Guardar en la base de datos
     conn = sqlite3.connect("documentos.db")
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO Documentos (Nombre_Archivo, Tipo_Formato, Ruta_Archivo, Fecha_Subida, Palabras_Clave)
-        VALUES (?, ?, ?, ?, ?)
-    """, (nombre, tipo, ruta, fecha, ""))
+        INSERT INTO Documentos (Nombre, Tipo, Ruta, PalabrasClave, Fecha_Subida)
+        VALUES (?, ?, ?, ?, DATE('now'))
+    """, (filename, filename.split(".")[-1], ruta, "",))
     conn.commit()
     conn.close()
 
-    return "Archivo cargado correctamente. <a href='/'>Volver</a>"
+    return f"Archivo '{filename}' cargado y registrado correctamente. <a href='/'>Volver</a>"
 
 @app.route("/buscar", methods=["GET"])
 def buscar():
     palabra = request.args.get("q")
     conn = sqlite3.connect("documentos.db")
     cur = conn.cursor()
-    cur.execute("SELECT Nombre_Archivo, Ruta_Archivo FROM Documentos WHERE Nombre_Archivo LIKE ?", ('%' + palabra + '%',))
+    # Buscar tanto en PalabrasClave como en Nombre
+    cur.execute("SELECT Nombre, Ruta FROM Documentos WHERE PalabrasClave LIKE ? OR Nombre LIKE ?", 
+                ('%' + palabra + '%', '%' + palabra + '%'))
     resultados = cur.fetchall()
     conn.close()
 
-    html = "<h1>Resultados</h1><ul>"
+    html = "<h1>Resultados de búsqueda</h1><ul>"
     for nombre, ruta in resultados:
-        html += f"<li>{nombre} - <a href='{ruta}' download>Descargar</a></li>"
+        if os.path.exists(ruta):
+            # Enlace de descarga válido
+            html += f"<li>{nombre} - <a href='/download/{nombre}'>Descargar</a></li>"
+        else:
+            html += f"<li>{nombre} - (Archivo no encontrado)</li>"
     html += "</ul><a href='/'>Volver</a>"
     return html
 
-import os
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+# Nueva ruta para servir descargas
+@app.route("/download/<filename>")
+def download_file(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename, as_attachment=True)
 
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
 

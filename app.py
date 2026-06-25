@@ -7,8 +7,8 @@ import os
 app = Flask(__name__)
 
 # 🔐 CONFIGURA ESTO
-EMAIL = "tuemail@gmail.com"
-APP_PASSWORD = "tu_app_password"   # ⚠️ NO tu contraseña normal
+EMAIL = "chrislozada197@gmail.com"
+APP_PASSWORD = "wnut jysi afxm eeee"   # ⚠️ NO tu contraseña normal
 
 # 🔹 URL de tu propia API (ajústala si es necesario)
 API_URL = "https://base-de-datos.onrender.com"  

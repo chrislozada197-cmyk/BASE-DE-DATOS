@@ -2,50 +2,53 @@ from flask import Flask, jsonify
 import requests
 import smtplib
 from email.message import EmailMessage
+import os
 
 app = Flask(__name__)
 
-# 🔐 CONFIGURA ESTO
+# 🔐 CONFIGURACIÓN
 EMAIL = "chrislozada197@gmail.com"
-APP_PASSWORD = "wnut jysi afxm eeee"   # ⚠️ App Password de Gmail
+APP_PASSWORD = "wnut jysi afxm eeee"
 
-# ✅ URL CORRECTA DE TU APP EN RENDER
+# IMPORTANTE: usar la misma URL de Render
 API_URL = "https://base-de-datos-lyfu.onrender.com"
 
 
-# ✅ ENDPOINT PRINCIPAL
+# ✅ ROOT
 @app.route("/")
 def home():
-    return jsonify({
-        "mensaje": "API funcionando correctamente"
-    })
+    return jsonify({"mensaje": "API funcionando correctamente"})
 
 
-# ✅ ENDPOINT DE DATOS
+# ✅ DATA
 @app.route("/data")
-def get_data():
-    data = {
+def data():
+    return jsonify({
         "usuarios": [
             {"nombre": "Christian", "edad": 25},
             {"nombre": "Maria", "edad": 22}
         ]
-    }
-    return jsonify(data)
+    })
 
 
-# ✅ FUNCIÓN PARA ENVIAR BACKUP
-def enviar_backup():
+# ✅ BACKUP
+@app.route("/backup")
+def backup():
     try:
-        # 🔹 Obtener datos
-        response = requests.get(API_URL + "/data")
-        data = response.text
+        # 🔹 obtener datos directamente (sin depender de API_URL)
+        data = {
+            "usuarios": [
+                {"nombre": "Christian", "edad": 25},
+                {"nombre": "Maria", "edad": 22}
+            ]
+        }
 
-        # 🔹 Guardar archivo
         filename = "backup.json"
         with open(filename, "w", encoding="utf-8") as f:
-            f.write(data)
+            import json
+            json.dump(data, f)
 
-        # 🔹 Crear correo
+        # 🔹 crear correo
         msg = EmailMessage()
         msg['Subject'] = 'Backup Flask'
         msg['From'] = EMAIL
@@ -59,7 +62,7 @@ def enviar_backup():
                 filename=filename
             )
 
-        # 🔹 Enviar correo
+        # 🔹 enviar correo
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
@@ -67,18 +70,10 @@ def enviar_backup():
         return "✅ Backup enviado correctamente"
 
     except Exception as e:
-        return f"❌ Error en backup: {str(e)}"
+        return f"❌ Error: {str(e)}"
 
 
-# ✅ ENDPOINT DE BACKUP
-@app.route("/backup")
-def backup():
-    return enviar_backup()
-
-
+# ✅ IMPORTANTE PARA RENDER
 if __name__ == "__main__":
-    app.run(debug=True)
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

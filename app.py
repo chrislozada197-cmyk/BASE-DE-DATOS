@@ -3,7 +3,7 @@ import sqlite3, os
 
 app = Flask(__name__)
 
-# Carpeta interna en Render (no OneDrive local)
+# Carpeta interna en Render (compatible con cualquier archivo)
 UPLOAD_FOLDER = "archivos"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # crea la carpeta si no existe
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -16,8 +16,8 @@ def inicio():
 def upload_file():
     file = request.files["file"]
 
-    # Normalizar nombre del archivo (quita espacios)
-    filename = os.path.basename(file.filename).replace(" ", "_")
+    # Mantener el nombre original del archivo (con espacios y caracteres especiales)
+    filename = file.filename  
 
     # Ruta completa en carpeta interna
     ruta = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -60,12 +60,13 @@ def buscar():
     html += "</ul><a href='/'>Volver</a>"
     return html
 
-# Nueva ruta para servir descargas
-@app.route("/download/<filename>")
+# Nueva ruta para servir descargas (acepta nombres con espacios y caracteres)
+@app.route("/download/<path:filename>")
 def download_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename, as_attachment=True)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 

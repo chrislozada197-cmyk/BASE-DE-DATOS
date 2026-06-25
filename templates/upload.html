@@ -4,16 +4,17 @@
     <title>Gestión de Documentos</title>
 </head>
 <body>
-    <h1>Subir documento</h1>
+    <h1>Subir archivo</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <button type="submit">Subir</button>
+        <!-- Permite cualquier tipo de archivo -->
+        <input type="file" name="file" accept="*/*" required>
+        <input type="submit" value="Subir">
     </form>
 
-    <h1>Buscar documento</h1>
+    <h1>Buscar archivo</h1>
     <form action="/buscar" method="get">
         <input type="text" name="q" placeholder="Nombre o palabra clave" required>
-        <button type="submit">Buscar</button>
+        <input type="submit" value="Buscar">
     </form>
 </body>
 </html>

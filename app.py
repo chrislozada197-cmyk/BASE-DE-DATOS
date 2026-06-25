@@ -5,18 +5,15 @@ import json
 
 app = Flask(__name__)
 
-# CONFIGURACION
 EMAIL = "chrislozada197@gmail.com"
 APP_PASSWORD = "wnut jysi afxm eeee"
 
 
-# ROOT
 @app.route("/")
 def home():
-    return jsonify({"mensaje": "NUEVA VERSION FUNCIONANDO ✅"})
+    return jsonify({"mensaje": "VERSION FUNCIONANDO"})
 
 
-# DATA
 @app.route("/data")
 def data():
     return jsonify({
@@ -27,7 +24,6 @@ def data():
     })
 
 
-# BACKUP
 @app.route("/backup")
 def backup():
     try:
@@ -38,17 +34,14 @@ def backup():
             ]
         }
 
-        # Guardar archivo
         with open("backup.json", "w") as archivo:
             json.dump(datos, archivo)
 
-        # Crear correo
         mensaje = EmailMessage()
         mensaje["Subject"] = "Backup Flask"
         mensaje["From"] = EMAIL
         mensaje["To"] = EMAIL
 
-        # Adjuntar archivo
         with open("backup.json", "rb") as archivo:
             mensaje.add_attachment(
                 archivo.read(),
@@ -57,14 +50,12 @@ def backup():
                 filename="backup.json"
             )
 
-        # Enviar correo
         servidor = smtplib.SMTP_SSL("smtp.gmail.com", 465)
         servidor.login(EMAIL, APP_PASSWORD)
         servidor.send_message(mensaje)
         servidor.quit()
 
-        return "✅ BACKUP ENVIADO ✅"
+        return "BACKUP ENVIADO"
 
     except Exception as e:
-        return f"❌ ERROR: {str(e)}"
-``
+        return str(e)

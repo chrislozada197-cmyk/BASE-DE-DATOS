@@ -1,14 +1,14 @@
-from flask import Flask, request, render_template, send_from_directory
+from flask import Flask, request, render_template, redirect
 import sqlite3, os
 
 app = Flask(__name__)
 
-# Carpeta interna en Render (compatible con cualquier archivo)
+# Carpeta interna en Render
 UPLOAD_FOLDER = "archivos"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # crea la carpeta si no existe
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Inicializar base de datos automáticamente al arrancar
+# Inicializar base de datos
 def init_db():
     conn = sqlite3.connect("documentos.db")
     cur = conn.cursor()
@@ -25,7 +25,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Ejecutar inicialización al inicio
 init_db()
 
 @app.route("/")
@@ -35,55 +34,60 @@ def inicio():
 @app.route("/upload", methods=["POST"])
 def upload_file():
     file = request.files["file"]
+    filename = file.filename
+    ruta_local = os.path.join(app.config["UPLOAD_FOLDER"], filename)
 
-    # Mantener el nombre original del archivo (con espacios y caracteres especiales)
-    filename = file.filename  
-
-    # Ruta completa en carpeta interna
-    ruta = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    # Palabras clave opcionales desde el formulario
+    keywords = request.form.get("keywords", "")
 
     try:
-        file.save(ruta)
+        file.save(ruta_local)
     except Exception as e:
         return f"Error al guardar el archivo: {str(e)}"
 
-    # Guardar en la base de datos
+    # Guardar registro en BD con ruta pendiente (OneDrive lo actualizará)
     conn = sqlite3.connect("documentos.db")
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO Documentos (Nombre, Tipo, Ruta, PalabrasClave, Fecha_Subida)
         VALUES (?, ?, ?, ?, DATE('now'))
-    """, (filename, filename.split(".")[-1], ruta, "",))
+    """, (filename, filename.split(".")[-1], "PENDIENTE", keywords,))
     conn.commit()
     conn.close()
 
-    return f"Archivo '{filename}' cargado y registrado correctamente. <a href='/'>Volver</a>"
+    return f"Archivo '{filename}' cargado correctamente. <a href='/'>Volver</a>"
 
 @app.route("/buscar", methods=["GET"])
 def buscar():
     palabra = request.args.get("q")
     conn = sqlite3.connect("documentos.db")
     cur = conn.cursor()
-    # Buscar tanto en PalabrasClave como en Nombre
-    cur.execute("SELECT Nombre, Ruta FROM Documentos WHERE PalabrasClave LIKE ? OR Nombre LIKE ?", 
+    cur.execute("SELECT ID, Nombre, Ruta FROM Documentos WHERE PalabrasClave LIKE ? OR Nombre LIKE ?", 
                 ('%' + palabra + '%', '%' + palabra + '%'))
     resultados = cur.fetchall()
     conn.close()
 
     html = "<h1>Resultados de búsqueda</h1><ul>"
-    for nombre, ruta in resultados:
-        if os.path.exists(ruta):
-            # Enlace de descarga válido
-            html += f"<li>{nombre} - <a href='/download/{nombre}'>Descargar</a></li>"
+    for id, nombre, ruta in resultados:
+        if ruta != "PENDIENTE":
+            html += f"<li>{nombre} - <a href='/download/{id}'>Descargar</a></li>"
         else:
-            html += f"<li>{nombre} - (Archivo no encontrado)</li>"
+            html += f"<li>{nombre} - (Enlace aún no disponible)</li>"
     html += "</ul><a href='/'>Volver</a>"
     return html
 
-# Nueva ruta para servir descargas (acepta nombres con espacios y caracteres)
-@app.route("/download/<path:filename>")
-def download_file(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename, as_attachment=True)
+@app.route("/download/<int:id>")
+def download_file(id):
+    conn = sqlite3.connect("documentos.db")
+    cur = conn.cursor()
+    cur.execute("SELECT Ruta FROM Documentos WHERE ID=?", (id,))
+    resultado = cur.fetchone()
+    conn.close()
+
+    if resultado and resultado[0] != "PENDIENTE":
+        return redirect(resultado[0])  # redirige al enlace público OneDrive
+    else:
+        return "El archivo aún no tiene enlace público disponible."
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

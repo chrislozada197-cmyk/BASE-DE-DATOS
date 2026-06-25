@@ -2,19 +2,18 @@ from flask import Flask, jsonify
 import requests
 import smtplib
 from email.message import EmailMessage
-import os
 
 app = Flask(__name__)
 
 # 🔐 CONFIGURA ESTO
 EMAIL = "chrislozada197@gmail.com"
-APP_PASSWORD = "wnut jysi afxm eeee"   # ⚠️ NO tu contraseña normal
+APP_PASSWORD = "wnut jysi afxm eeee"   # ⚠️ App Password de Gmail
 
-# 🔹 URL de tu propia API (ajústala si es necesario)
-API_URL = "https://base-de-datos.onrender.com"  
+# ✅ URL CORRECTA DE TU APP EN RENDER
+API_URL = "https://base-de-datos-lyfu.onrender.com"
 
 
-# ✅ ENDPOINT PRINCIPAL (el que ya tienes)
+# ✅ ENDPOINT PRINCIPAL
 @app.route("/")
 def home():
     return jsonify({
@@ -22,7 +21,7 @@ def home():
     })
 
 
-# ✅ EJEMPLO DE DATOS (ajústalo a tu endpoint real)
+# ✅ ENDPOINT DE DATOS
 @app.route("/data")
 def get_data():
     data = {
@@ -37,16 +36,16 @@ def get_data():
 # ✅ FUNCIÓN PARA ENVIAR BACKUP
 def enviar_backup():
     try:
-        # 🔹 1. Obtener datos de tu API
+        # 🔹 Obtener datos
         response = requests.get(API_URL + "/data")
         data = response.text
 
-        # 🔹 2. Guardar archivo temporal
+        # 🔹 Guardar archivo
         filename = "backup.json"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(data)
 
-        # 🔹 3. Crear correo
+        # 🔹 Crear correo
         msg = EmailMessage()
         msg['Subject'] = 'Backup Flask'
         msg['From'] = EMAIL
@@ -60,7 +59,7 @@ def enviar_backup():
                 filename=filename
             )
 
-        # 🔹 4. Enviar correo
+        # 🔹 Enviar correo
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
@@ -71,11 +70,14 @@ def enviar_backup():
         return f"❌ Error en backup: {str(e)}"
 
 
-# ✅ ENDPOINT PARA ACTIVAR BACKUP
+# ✅ ENDPOINT DE BACKUP
 @app.route("/backup")
 def backup():
     return enviar_backup()
 
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 if __name__ == "__main__":
     app.run(debug=True)

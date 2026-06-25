@@ -8,6 +8,26 @@ UPLOAD_FOLDER = "archivos"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # crea la carpeta si no existe
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+# Inicializar base de datos automáticamente al arrancar
+def init_db():
+    conn = sqlite3.connect("documentos.db")
+    cur = conn.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS Documentos (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        Nombre TEXT NOT NULL,
+        Tipo TEXT NOT NULL,
+        Ruta TEXT NOT NULL,
+        PalabrasClave TEXT,
+        Fecha_Subida TEXT DEFAULT (DATE('now'))
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+# Ejecutar inicialización al inicio
+init_db()
+
 @app.route("/")
 def inicio():
     return render_template("upload.html")
@@ -68,5 +88,4 @@ def download_file(filename):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
 

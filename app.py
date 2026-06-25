@@ -1,95 +1,82 @@
-from flask import Flask, request, render_template, redirect
-import sqlite3, os
+from flask import Flask, jsonify
+import requests
+import smtplib
+from email.message import EmailMessage
+import os
 
 app = Flask(__name__)
 
-# Carpeta interna en Render
-UPLOAD_FOLDER = "archivos"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# 🔐 CONFIGURA ESTO
+EMAIL = "tuemail@gmail.com"
+APP_PASSWORD = "tu_app_password"   # ⚠️ NO tu contraseña normal
 
-# Inicializar base de datos
-def init_db():
-    conn = sqlite3.connect("documentos.db")
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS Documentos (
-        ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        Nombre TEXT NOT NULL,
-        Tipo TEXT NOT NULL,
-        Ruta TEXT NOT NULL,
-        PalabrasClave TEXT,
-        Fecha_Subida TEXT DEFAULT (DATE('now'))
-    )
-    """)
-    conn.commit()
-    conn.close()
+# 🔹 URL de tu propia API (ajústala si es necesario)
+API_URL = "https://base-de-datos.onrender.com"  
 
-init_db()
 
+# ✅ ENDPOINT PRINCIPAL (el que ya tienes)
 @app.route("/")
-def inicio():
-    return render_template("upload.html")
+def home():
+    return jsonify({
+        "mensaje": "API funcionando correctamente"
+    })
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    file = request.files["file"]
-    filename = file.filename
-    ruta_local = os.path.join(app.config["UPLOAD_FOLDER"], filename)
 
-    # Palabras clave opcionales desde el formulario
-    keywords = request.form.get("keywords", "")
+# ✅ EJEMPLO DE DATOS (ajústalo a tu endpoint real)
+@app.route("/data")
+def get_data():
+    data = {
+        "usuarios": [
+            {"nombre": "Christian", "edad": 25},
+            {"nombre": "Maria", "edad": 22}
+        ]
+    }
+    return jsonify(data)
 
+
+# ✅ FUNCIÓN PARA ENVIAR BACKUP
+def enviar_backup():
     try:
-        file.save(ruta_local)
+        # 🔹 1. Obtener datos de tu API
+        response = requests.get(API_URL + "/data")
+        data = response.text
+
+        # 🔹 2. Guardar archivo temporal
+        filename = "backup.json"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(data)
+
+        # 🔹 3. Crear correo
+        msg = EmailMessage()
+        msg['Subject'] = 'Backup Flask'
+        msg['From'] = EMAIL
+        msg['To'] = EMAIL
+
+        with open(filename, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype='application',
+                subtype='json',
+                filename=filename
+            )
+
+        # 🔹 4. Enviar correo
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL, APP_PASSWORD)
+            smtp.send_message(msg)
+
+        return "✅ Backup enviado correctamente"
+
     except Exception as e:
-        return f"Error al guardar el archivo: {str(e)}"
+        return f"❌ Error en backup: {str(e)}"
 
-    # Guardar registro en BD con ruta pendiente (OneDrive lo actualizará)
-    conn = sqlite3.connect("documentos.db")
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO Documentos (Nombre, Tipo, Ruta, PalabrasClave, Fecha_Subida)
-        VALUES (?, ?, ?, ?, DATE('now'))
-    """, (filename, filename.split(".")[-1], "PENDIENTE", keywords,))
-    conn.commit()
-    conn.close()
 
-    return f"Archivo '{filename}' cargado correctamente. <a href='/'>Volver</a>"
+# ✅ ENDPOINT PARA ACTIVAR BACKUP
+@app.route("/backup")
+def backup():
+    return enviar_backup()
 
-@app.route("/buscar", methods=["GET"])
-def buscar():
-    palabra = request.args.get("q")
-    conn = sqlite3.connect("documentos.db")
-    cur = conn.cursor()
-    cur.execute("SELECT ID, Nombre, Ruta FROM Documentos WHERE PalabrasClave LIKE ? OR Nombre LIKE ?", 
-                ('%' + palabra + '%', '%' + palabra + '%'))
-    resultados = cur.fetchall()
-    conn.close()
-
-    html = "<h1>Resultados de búsqueda</h1><ul>"
-    for id, nombre, ruta in resultados:
-        if ruta != "PENDIENTE":
-            html += f"<li>{nombre} - <a href='/download/{id}'>Descargar</a></li>"
-        else:
-            html += f"<li>{nombre} - (Enlace aún no disponible)</li>"
-    html += "</ul><a href='/'>Volver</a>"
-    return html
-
-@app.route("/download/<int:id>")
-def download_file(id):
-    conn = sqlite3.connect("documentos.db")
-    cur = conn.cursor()
-    cur.execute("SELECT Ruta FROM Documentos WHERE ID=?", (id,))
-    resultado = cur.fetchone()
-    conn.close()
-
-    if resultado and resultado[0] != "PENDIENTE":
-        return redirect(resultado[0])  # redirige al enlace público OneDrive
-    else:
-        return "El archivo aún no tiene enlace público disponible."
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True)
 

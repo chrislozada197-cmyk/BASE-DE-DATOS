@@ -1,8 +1,8 @@
 from flask import Flask, jsonify
+from flask import Flask, jsonify
 import smtplib
 from email.message import EmailMessage
 import json
-import os
 
 app = Flask(__name__)
 
@@ -11,15 +11,13 @@ EMAIL = "chrislozada197@gmail.com"
 APP_PASSWORD = "wnut jysi afxm eeee"
 
 
-# ✅ ROOT (CAMBIO PARA VERIFICAR DEPLOY)
+# ✅ ROOT
 @app.route("/")
 def home():
-    return jsonify({
-        "mensaje": "NUEVA VERSION FUNCIONANDO ✅"
-    })
+    return jsonify({"mensaje": "NUEVA VERSION FUNCIONANDO ✅"})
 
 
-# ✅ ENDPOINT DE DATOS
+# ✅ DATA
 @app.route("/data")
 def data():
     return jsonify({
@@ -30,11 +28,10 @@ def data():
     })
 
 
-# ✅ ENDPOINT BACKUP (TODO AQUÍ)
+# ✅ BACKUP
 @app.route("/backup")
 def backup():
     try:
-        # 🔹 Crear datos manualmente
         data = {
             "usuarios": [
                 {"nombre": "Christian", "edad": 25},
@@ -42,27 +39,25 @@ def backup():
             ]
         }
 
-        filename = "backup.json"
-
-        # 🔹 Guardar archivo
-        with open(filename, "w", encoding="utf-8") as f:
+        # 🔹 guardar archivo
+        with open("backup.json", "w") as f:
             json.dump(data, f)
 
-        # 🔹 Crear email
+        # 🔹 crear correo
         msg = EmailMessage()
         msg['Subject'] = 'Backup Flask'
         msg['From'] = EMAIL
         msg['To'] = EMAIL
 
-        with open(filename, "rb") as f:
+        with open("backup.json", "rb") as f:
             msg.add_attachment(
                 f.read(),
                 maintype='application',
                 subtype='json',
-                filename=filename
+                filename="backup.json"
             )
 
-        # 🔹 Enviar correo
+        # 🔹 enviar correo
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
@@ -72,9 +67,4 @@ def backup():
     except Exception as e:
         return f"❌ ERROR: {str(e)}"
 
-
-# ✅ IMPORTANTE PARA RENDER
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
 ``

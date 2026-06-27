@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify
 import sqlite3
+import smtplib
+from email.message import EmailMessage
+import json
 
 app = Flask(__name__)
 
@@ -7,6 +10,9 @@ app = Flask(__name__)
 # CONFIG
 # ==============================
 DATABASE = "documentos.db"
+
+EMAIL = "chrislozada197@gmail.com"
+APP_PASSWORD = "wnut jysi afxm eeee"
 
 
 # ==============================
@@ -87,7 +93,7 @@ def ver():
 
 
 # ==============================
-# BACKUP (SIN ARCHIVO → FUNCIONA EN RENDER)
+# BACKUP + ENVÍO DE CORREO (FINAL)
 # ==============================
 @app.route("/backup")
 def backup():
@@ -100,7 +106,7 @@ def backup():
 
         conn.close()
 
-        # convertir a JSON limpio
+        # ✅ convertir a JSON limpio
         datos_json = []
         for fila in datos:
             datos_json.append({
@@ -109,10 +115,27 @@ def backup():
                 "contenido": fila[2]
             })
 
-        return jsonify({
-            "mensaje": "BACKUP OK",
-            "data": datos_json
-        })
+        contenido_json = json.dumps(datos_json, indent=4)
 
-    except Exception as e:
-        return jsonify({"error": str(e)})
+        # ✅ crear correo
+        msg = EmailMessage()
+        msg["Subject"] = "Backup Flask"
+        msg["From"] = EMAIL
+        msg["To"] = EMAIL
+
+        # ✅ adjuntar archivo SIN guardarlo en disco
+        msg.add_attachment(
+            contenido_json.encode("utf-8"),
+            maintype="application",
+            subtype="json",
+            filename="backup.json"
+        )
+
+        # ✅ enviar correo
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL, APP_PASSWORD)
+            smtp.send_message(msg)
+
+        return jsonify({"mensaje": "BACKUP ENVIADO ✅"})
+
+    except Exception as e

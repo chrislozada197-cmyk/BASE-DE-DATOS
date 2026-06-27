@@ -49,23 +49,27 @@ def home():
 # ==============================
 @app.route("/insertar", methods=["POST"])
 def insertar():
-    data = request.json
+    try:
+        data = request.json
 
-    nombre = data.get("nombre")
-    contenido = data.get("contenido")
+        nombre = data.get("nombre")
+        contenido = data.get("contenido")
 
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    cursor.execute(
-        "INSERT INTO documentos (nombre, contenido) VALUES (?, ?)",
-        (nombre, contenido)
-    )
+        cursor.execute(
+            "INSERT INTO documentos (nombre, contenido) VALUES (?, ?)",
+            (nombre, contenido)
+        )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return jsonify({"mensaje": "Datos guardados"})
+        return jsonify({"mensaje": "Datos guardados"})
+    
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 # ==============================
@@ -73,24 +77,7 @@ def insertar():
 # ==============================
 @app.route("/ver", methods=["GET"])
 def ver():
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM documentos")
-    datos = cursor.fetchall()
-
-    conn.close()
-
-    return jsonify(datos)
-
-
-# ==============================
-# BACKUP (ENVÍA EMAIL)
-# ==============================
-@app.route("/backup")
-def backup():
     try:
-        # Obtener datos de la DB
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
 
@@ -99,11 +86,41 @@ def backup():
 
         conn.close()
 
-        # Guardar backup JSON
-        with open("backup.json", "w") as f:
-            json.dump(datos, f)
+        return jsonify(datos)
 
-        # Crear correo
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+# ==============================
+# BACKUP (ENVÍA EMAIL)
+# ==============================
+@app.route("/backup")
+def backup():
+    try:
+        # 🔹 Obtener datos de la DB
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM documentos")
+        datos = cursor.fetchall()
+
+        conn.close()
+
+        # 🔹 Convertir datos a JSON limpio
+        datos_json = []
+        for fila in datos:
+            datos_json.append({
+                "id": fila[0],
+                "nombre": fila[1],
+                "contenido": fila[2]
+            })
+
+        # 🔹 Guardar archivo backup
+        with open("backup.json", "w", encoding="utf-8") as f:
+            json.dump(datos_json, f, ensure_ascii=False, indent=4)
+
+        # 🔹 Crear correo
         msg = EmailMessage()
         msg["Subject"] = "Backup Flask"
         msg["From"] = EMAIL
@@ -117,12 +134,12 @@ def backup():
                 filename="backup.json"
             )
 
-        # Enviar correo
+        # 🔹 Enviar correo
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
 
-        return jsonify({"mensaje": "BACKUP ENVIADO"})
+        return jsonify({"mensaje": "BACKUP ENVIADO ✅"})
 
     except Exception as e:
         return jsonify({"error": str(e)})

@@ -11,7 +11,8 @@ APP_PASSWORD = "wnut jysi afxm eeee"
 
 @app.route("/")
 def home():
-    return jsonify({"mensaje": "VERSION FUNCIONANDO"})
+    return "ARCHIVO CORRECTO CON BACKUP"
+
 
 
 @app.route("/backup")

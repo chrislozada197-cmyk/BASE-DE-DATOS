@@ -4,9 +4,9 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "FUNCIONA ROOT"
+    return "OK ROOT FUNCIONA"
 
 @app.route("/backup")
 def backup():
-    return "FUNCIONA BACKUP"
+    return "OK BACKUP FUNCIONA"
 ``

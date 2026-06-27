@@ -1,41 +1,114 @@
-ffrom flask import Flask, jsonify
+from flask import Flask, request, jsonify
+import sqlite3
 import smtplib
 from email.message import EmailMessage
 import json
 
 app = Flask(__name__)
 
-# ✅ CONFIGURA TU CORREO
+# ==============================
+# CONFIG
+# ==============================
+DATABASE = "documentos.db"
+
 EMAIL = "chrislozada197@gmail.com"
 APP_PASSWORD = "wnut jysi afxm eeee"
 
 
-# ✅ RUTA PRINCIPAL (NO CAMBIAR)
+# ==============================
+# CREAR TABLA SI NO EXISTE
+# ==============================
+def init_db():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS documentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT,
+            contenido TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+
+# ==============================
+# RUTA PRINCIPAL
+# ==============================
 @app.route("/")
 def home():
-    return jsonify({"mensaje": "VERSION FUNCIONANDO"})
+    return jsonify({"mensaje": "API funcionando correctamente"})
 
 
-# ✅ RUTA BACKUP
+# ==============================
+# INSERTAR DATOS
+# ==============================
+@app.route("/insertar", methods=["POST"])
+def insertar():
+    data = request.json
+
+    nombre = data.get("nombre")
+    contenido = data.get("contenido")
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO documentos (nombre, contenido) VALUES (?, ?)",
+        (nombre, contenido)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"mensaje": "Datos guardados"})
+
+
+# ==============================
+# VER DATOS
+# ==============================
+@app.route("/ver", methods=["GET"])
+def ver():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM documentos")
+    datos = cursor.fetchall()
+
+    conn.close()
+
+    return jsonify(datos)
+
+
+# ==============================
+# BACKUP (ENVÍA EMAIL)
+# ==============================
 @app.route("/backup")
 def backup():
     try:
-        # 🔹 datos de prueba (puedes cambiar luego por tu BD)
-        datos = {
-            "backup": "funcionando correctamente"
-        }
+        # Obtener datos de la DB
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-        # 🔹 guardar archivo
+        cursor.execute("SELECT * FROM documentos")
+        datos = cursor.fetchall()
+
+        conn.close()
+
+        # Guardar backup JSON
         with open("backup.json", "w") as f:
             json.dump(datos, f)
 
-        # 🔹 crear correo
+        # Crear correo
         msg = EmailMessage()
         msg["Subject"] = "Backup Flask"
         msg["From"] = EMAIL
         msg["To"] = EMAIL
 
-        # 🔹 adjuntar archivo
         with open("backup.json", "rb") as f:
             msg.add_attachment(
                 f.read(),
@@ -44,13 +117,12 @@ def backup():
                 filename="backup.json"
             )
 
-        # 🔹 enviar correo
+        # Enviar correo
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
 
-        return "BACKUP OK"
+        return jsonify({"mensaje": "BACKUP ENVIADO"})
 
     except Exception as e:
-        return "ERROR: " + str(e)
-``
+        return jsonify({"error": str(e)})

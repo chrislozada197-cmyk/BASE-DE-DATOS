@@ -1,22 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Gestión de Documentos</title>
+    <meta charset="UTF-8">
+    <title>Gestión de Archivos</title>
 </head>
-<body>
-    <h1>Subir archivo</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <!-- Permite cualquier tipo de archivo -->
-        <input type="file" name="file" accept="*/*" required>
-        <!-- Campo opcional de palabras clave -->
-        <input type="text" name="keywords" placeholder="Palabras clave (opcional)">
-        <input type="submit" value="Subir">
-    </form>
 
-    <h1>Buscar archivo</h1>
-    <form action="/buscar" method="get">
-        <input type="text" name="q" placeholder="Nombre o palabra clave" required>
-        <input type="submit" value="Buscar">
-    </form>
+<body>
+
+<h1>Subir archivo</h1>
+
+<form action="/subir_archivo" method="post" enctype="multipart/form-data">
+    <input type="file" name="archivo" required>
+    <button type="submit">Subir</button>
+</form>
+
+<hr>
+
+<h1>Buscar archivo</h1>
+
+<form action="/buscar" method="get">
+    <input type="text" name="q" placeholder="Nombre o palabra clave" required>
+    <button type="submit">Buscar</button>
+</form>
+
 </body>
 </html>

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
 import sqlite3
 import json
 import base64
@@ -34,63 +34,15 @@ init_db()
 
 
 # ==============================
-# HOME
+# PAGINA WEB
 # ==============================
 @app.route("/")
 def home():
-    return jsonify({"mensaje": "API funcionando correctamente"})
+    return render_template("index.html")
 
 
 # ==============================
-# INSERTAR TEXTO
-# ==============================
-@app.route("/insertar", methods=["POST"])
-def insertar():
-    try:
-        data = request.json
-
-        nombre = data.get("nombre")
-        contenido = data.get("contenido")
-
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "INSERT INTO documentos (nombre, contenido) VALUES (?, ?)",
-            (nombre, contenido)
-        )
-
-        conn.commit()
-        conn.close()
-
-        return jsonify({"mensaje": "Datos guardados"})
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-# ==============================
-# VER DATOS
-# ==============================
-@app.route("/ver")
-def ver():
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM documentos")
-        datos = cursor.fetchall()
-
-        conn.close()
-
-        return jsonify(datos)
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-# ==============================
-# SUBIR ARCHIVO REAL
+# SUBIR ARCHIVO
 # ==============================
 @app.route("/subir_archivo", methods=["POST"])
 def subir_archivo():
@@ -100,7 +52,6 @@ def subir_archivo():
         nombre = archivo.filename
         contenido = archivo.read()
 
-        # Convertir archivo a base64
         contenido_base64 = base64.b64encode(contenido).decode("utf-8")
 
         conn = sqlite3.connect(DATABASE)
@@ -114,14 +65,46 @@ def subir_archivo():
         conn.commit()
         conn.close()
 
-        return jsonify({"mensaje": "Archivo guardado correctamente"})
+        return "✅ Archivo subido correctamente <br><a href='/'>Volver</a>"
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return f"Error: {str(e)}"
 
 
 # ==============================
-# DESCARGAR ARCHIVO REAL
+# BUSCAR ARCHIVO
+# ==============================
+@app.route("/buscar")
+def buscar():
+    try:
+        query = request.args.get("q")
+
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT id, nombre FROM documentos WHERE nombre LIKE ?",
+            ('%' + query + '%',)
+        )
+        resultados = cursor.fetchall()
+
+        conn.close()
+
+        html = "<h2>Resultados:</h2>"
+
+        for r in resultados:
+            html += f"<p>{r[1]} - <a href='/descargar/{r[0]}'>Descargar</a></p>"
+
+        html += "<br><a href='/'>Volver</a>"
+
+        return html
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+# ==============================
+# DESCARGAR ARCHIVO
 # ==============================
 @app.route("/descargar/<int:id>")
 def descargar(id):
@@ -134,13 +117,12 @@ def descargar(id):
 
         conn.close()
 
-        if dato is None:
-            return jsonify({"error": "Archivo no encontrado"})
+        if not dato:
+            return "Archivo no encontrado"
 
         nombre = dato[0]
         contenido_base64 = dato[1]
 
-        # Decodificar archivo
         archivo_bytes = base64.b64decode(contenido_base64)
 
         return send_file(
@@ -150,11 +132,27 @@ def descargar(id):
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return f"Error: {str(e)}"
 
 
 # ==============================
-# BACKUP (PARA POWER AUTOMATE)
+# VER TODO (opcional API)
+# ==============================
+@app.route("/ver")
+def ver():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM documentos")
+    datos = cursor.fetchall()
+
+    conn.close()
+
+    return jsonify(datos)
+
+
+# ==============================
+# BACKUP (POWER AUTOMATE)
 # ==============================
 @app.route("/backup")
 def backup():

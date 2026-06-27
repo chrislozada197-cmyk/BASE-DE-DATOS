@@ -5,55 +5,44 @@ import json
 
 app = Flask(__name__)
 
-# CONFIGURACIÓN (usa tu Gmail y App Password)
 EMAIL = "chrislozada197@gmail.com"
 APP_PASSWORD = "wnut jysi afxm eeee"
 
 
-# ✅ RUTA PRINCIPAL
 @app.route("/")
 def home():
     return jsonify({"mensaje": "VERSION FUNCIONANDO"})
 
 
-# ✅ RUTA BACKUP
 @app.route("/backup")
 def backup():
     try:
-        # Datos a respaldar
-        datos = {
-            "usuarios": [
-                {"nombre": "Christian", "edad": 25},
-                {"nombre": "Maria", "edad": 22}
-            ]
-        }
+        # datos simples
+        datos = {"mensaje": "backup funcionando"}
 
-        # Crear archivo JSON
-        with open("backup.json", "w") as archivo:
-            json.dump(datos, archivo)
+        # guardar archivo
+        with open("backup.json", "w") as f:
+            json.dump(datos, f)
 
-        # Crear correo
-        mensaje = EmailMessage()
-        mensaje["Subject"] = "Backup Flask"
-        mensaje["From"] = EMAIL
-        mensaje["To"] = EMAIL
+        # email
+        msg = EmailMessage()
+        msg["Subject"] = "Backup Flask"
+        msg["From"] = EMAIL
+        msg["To"] = EMAIL
 
-        # Adjuntar archivo
-        with open("backup.json", "rb") as archivo:
-            mensaje.add_attachment(
-                archivo.read(),
+        with open("backup.json", "rb") as f:
+            msg.add_attachment(
+                f.read(),
                 maintype="application",
                 subtype="json",
                 filename="backup.json"
             )
 
-        # Enviar correo
-        servidor = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        servidor.login(EMAIL, APP_PASSWORD)
-        servidor.send_message(mensaje)
-        servidor.quit()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL, APP_PASSWORD)
+            smtp.send_message(msg)
 
-        return "BACKUP ENVIADO"
+        return "BACKUP ENVIADO OK"
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        return "ERROR: " + str(e)

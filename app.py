@@ -14,16 +14,6 @@ def home():
     return jsonify({"mensaje": "VERSION FUNCIONANDO"})
 
 
-@app.route("/data")
-def data():
-    return jsonify({
-        "usuarios": [
-            {"nombre": "Christian", "edad": 25},
-            {"nombre": "Maria", "edad": 22}
-        ]
-    })
-
-
 @app.route("/backup")
 def backup():
     try:
